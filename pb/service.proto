@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package pb;
+option go_package = "../pb";
+
+import "google/protobuf/empty.proto";
+import "error.proto";
+
+service SentinelService {
+    rpc SendError(ErrorInfo) returns (google.protobuf.Empty);
+}
