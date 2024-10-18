@@ -121,7 +121,6 @@ func (s *service) buildAlertMessage(e entity.ErrorInfo) string {
 
 func escape(in string) string {
 	return html.EscapeString(replaceNewlines(in))
-
 }
 
 func replaceNewlines(in string) string {
