@@ -100,14 +100,9 @@ func (s *service) buildAlertTitle() string {
 func (s *service) buildAlertMessage(e entity.ErrorInfo) string {
 	var buffer bytes.Buffer
 
-	// Header with essential information, properly escaped
+	// Main error information
 	buffer.WriteString(fmt.Sprintf("<b>🛠️ Service:</b> %s\n", escape(e.Service)))
 	buffer.WriteString(fmt.Sprintf("<b>🔄 Operation:</b> %s\n", escape(e.Operation)))
-
-	// Separator
-	buffer.WriteString("\n")
-
-	// Main error information
 	buffer.WriteString(fmt.Sprintf("<b>❗ Code:</b> %s\n", escape(e.Code)))
 	buffer.WriteString(fmt.Sprintf("<b>💬 Message:</b> %s\n", escape((e.Message))))
 
