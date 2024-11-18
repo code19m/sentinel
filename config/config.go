@@ -12,7 +12,7 @@ const (
 )
 
 type Config struct {
-	ProjectName string `env:"PROJECT_NAME" env-default:"Unknown (please set PROJECT_NAME)"`
+	Environment string `env:"ENVIRONMENT" env-required:"true"`
 
 	GrpcHost string `env:"GRPC_HOST"    env-default:"localhost"`
 	GrpcPort string `env:"GRPC_PORT"    env-default:"5001"`

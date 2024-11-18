@@ -13,11 +13,11 @@ import (
 
 type telegramNotifier struct {
 	notifier            notify.Notifier
-	project             string
+	environment         string
 	alertVisibleDetails []string
 }
 
-func NewTelegramNotifier(token string, chatIDs []int64, project string, alertVisibleDetails []string) (*telegramNotifier, error) {
+func NewTelegramNotifier(token string, chatIDs []int64, environment string, alertVisibleDetails []string) (*telegramNotifier, error) {
 	tg, err := telegram.New(token)
 	if err != nil {
 		return nil, fmt.Errorf("NewTelegramNotifier: %w", err)
@@ -29,7 +29,7 @@ func NewTelegramNotifier(token string, chatIDs []int64, project string, alertVis
 
 	return &telegramNotifier{
 		notifier:            n,
-		project:             project,
+		environment:         environment,
 		alertVisibleDetails: alertVisibleDetails,
 	}, nil
 }
@@ -51,16 +51,17 @@ func (tn *telegramNotifier) Notify(ctx context.Context, e entity.ErrorInfo) erro
 }
 
 func (tn *telegramNotifier) buildMsgTitle() string {
-	return fmt.Sprintf("<b>🏗️ Project:</b> %s\n", escapeHtml(tn.project))
+	return "<b>❗ Error alert from Sentinel</b>\n"
 }
 
 func (tn *telegramNotifier) buildMsgBody(e entity.ErrorInfo) string {
 	var buffer bytes.Buffer
 
 	// Main error information
+	buffer.WriteString(fmt.Sprintf("<b>🔍 Environment:</b> %s\n", escapeHtml(tn.environment)))
 	buffer.WriteString(fmt.Sprintf("<b>🛠️ Service:</b> %s\n", escapeHtml(e.Service)))
 	buffer.WriteString(fmt.Sprintf("<b>🔄 Operation:</b> %s\n", escapeHtml(e.Operation)))
-	buffer.WriteString(fmt.Sprintf("<b>❗ Code:</b> %s\n", escapeHtml(e.Code)))
+	buffer.WriteString(fmt.Sprintf("<b>🏷️ Code:</b> %s\n", escapeHtml(e.Code)))
 	buffer.WriteString(fmt.Sprintf("<b>💬 Message:</b> %s\n", escapeHtml((e.Message))))
 
 	// Separator for Details section

@@ -13,11 +13,11 @@ import (
 
 type discordNotifier struct {
 	notifier            notify.Notifier
-	project             string
+	environment         string
 	alertVisibleDetails []string
 }
 
-func NewDiscordNotifier(token string, channelIDs []string, project string, alertVisibleDetails []string) (*discordNotifier, error) {
+func NewDiscordNotifier(token string, channelIDs []string, environment string, alertVisibleDetails []string) (*discordNotifier, error) {
 	d := discord.New()
 	err := d.AuthenticateWithBotToken(token)
 	if err != nil {
@@ -30,7 +30,7 @@ func NewDiscordNotifier(token string, channelIDs []string, project string, alert
 
 	return &discordNotifier{
 		notifier:            n,
-		project:             project,
+		environment:         environment,
 		alertVisibleDetails: alertVisibleDetails,
 	}, nil
 }
@@ -52,16 +52,17 @@ func (dn *discordNotifier) Notify(ctx context.Context, e entity.ErrorInfo) error
 }
 
 func (dn *discordNotifier) buildMsgTitle() string {
-	return fmt.Sprintf("**🏗️ Project:** %s\n", escapeMarkdown(dn.project))
+	return "**❗ Error alert from Sentinel**\n"
 }
 
 func (dn *discordNotifier) buildMsgBody(e entity.ErrorInfo) string {
 	var buffer bytes.Buffer
 
 	// Main error information
+	buffer.WriteString(fmt.Sprintf("**🔍 Environment:** %s\n", escapeMarkdown(dn.environment)))
 	buffer.WriteString(fmt.Sprintf("**🛠️ Service:** %s\n", escapeMarkdown(e.Service)))
 	buffer.WriteString(fmt.Sprintf("**🔄 Operation:** %s\n", escapeMarkdown(e.Operation)))
-	buffer.WriteString(fmt.Sprintf("**❗ Code:** %s\n", escapeMarkdown(e.Code)))
+	buffer.WriteString(fmt.Sprintf("**🏷️ Code:** %s\n", escapeMarkdown(e.Code)))
 	buffer.WriteString(fmt.Sprintf("**💬 Message:** %s\n", escapeMarkdown(e.Message)))
 
 	// Separator for Details section
