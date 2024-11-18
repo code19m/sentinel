@@ -47,6 +47,7 @@ func (s *server) SendError(ctx context.Context, in *pb.ErrorInfo) (*emptypb.Empt
 
 	err := s.usecase.SendError(ctx, e)
 	if err != nil {
+		s.log.ErrorContext(ctx, fmt.Sprintf("server.SendError: %v", err))
 		return nil, fmt.Errorf("server.SendError: %w", err)
 	}
 
