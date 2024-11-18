@@ -37,7 +37,7 @@ type Config struct {
 func LoadConfig() (Config, error) {
 	var cfg Config
 
-	err := cleanenv.ReadConfig(".env", &cfg)
+	err := cleanenv.ReadEnv(&cfg)
 	if err != nil {
 		return cfg, fmt.Errorf("LoadConfig: %w", err)
 	}
