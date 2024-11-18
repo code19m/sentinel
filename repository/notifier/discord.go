@@ -52,7 +52,7 @@ func (dn *discordNotifier) Notify(ctx context.Context, e entity.ErrorInfo) error
 }
 
 func (dn *discordNotifier) buildMsgTitle() string {
-	return "**❗ Error alert from Sentinel**\n"
+	return "**❗ Error from Sentinel**\n"
 }
 
 func (dn *discordNotifier) buildMsgBody(e entity.ErrorInfo) string {

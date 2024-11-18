@@ -51,7 +51,7 @@ func (tn *telegramNotifier) Notify(ctx context.Context, e entity.ErrorInfo) erro
 }
 
 func (tn *telegramNotifier) buildMsgTitle() string {
-	return "<b>❗ Error alert from Sentinel</b>\n"
+	return "<b>❗ Error from Sentinel</b>\n"
 }
 
 func (tn *telegramNotifier) buildMsgBody(e entity.ErrorInfo) string {
