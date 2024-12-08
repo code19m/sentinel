@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 
 	"github.com/code19m/sentinel/config"
 	"github.com/code19m/sentinel/pb"
@@ -23,10 +25,19 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func main() {
-	ctx := context.Background()
+type app struct {
+	logger *slog.Logger
+	cfg    config.Config
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	pgConn *pgxpool.Pool
+	server *grpc.Server
+}
+
+func New(
+	logger *slog.Logger,
+	cfg config.Config,
+) *app {
+	ctx := context.Background()
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -79,19 +90,40 @@ func main() {
 	pb.RegisterSentinelServiceServer(grpcServer, sentinelServer)
 	reflection.Register(grpcServer)
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", cfg.GrpcHost, cfg.GrpcPort))
+	return &app{
+		logger: logger,
+		cfg:    cfg,
+		pgConn: pgConn,
+		server: grpcServer,
+	}
+}
+
+func (a *app) Start() {
+	ctx := context.Background()
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", a.cfg.GrpcHost, a.cfg.GrpcPort))
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to listen", slog.Any("error", err))
+		a.logger.ErrorContext(ctx, "Failed to listen", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	logger.InfoContext(ctx, "Server started", slog.String("address", listener.Addr().String()))
+	a.logger.InfoContext(ctx, "Server started", slog.String("address", listener.Addr().String()))
 
-	err = grpcServer.Serve(listener)
+	err = a.server.Serve(listener)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to serve", slog.Any("error", err))
+		a.logger.ErrorContext(ctx, "Failed to serve", slog.Any("error", err))
 		os.Exit(1)
 	}
+
+	// Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	<-quit
+	a.server.GracefulStop()
+	a.pgConn.Close()
+
+	a.logger.InfoContext(ctx, "Server stopped")
 }
 
 func defineNotifier(cfg config.Config) (notifier.Notifier, error) {
