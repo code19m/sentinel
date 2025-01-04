@@ -15,6 +15,7 @@ type telegramNotifier struct {
 	notifier            notify.Notifier
 	environment         string
 	alertVisibleDetails []string
+	showAllDetails      bool
 }
 
 func NewTelegramNotifier(token string, chatIDs []int64, environment string, alertVisibleDetails []string) (*telegramNotifier, error) {
@@ -31,6 +32,7 @@ func NewTelegramNotifier(token string, chatIDs []int64, environment string, aler
 		notifier:            n,
 		environment:         environment,
 		alertVisibleDetails: alertVisibleDetails,
+		showAllDetails:      len(alertVisibleDetails) == 1 && alertVisibleDetails[0] == "*",
 	}, nil
 }
 
@@ -69,7 +71,7 @@ func (tn *telegramNotifier) buildMsgBody(e entity.ErrorInfo) string {
 
 	// Details section with only visible details
 	for k, v := range e.Details {
-		if slices.Contains(tn.alertVisibleDetails, k) {
+		if slices.Contains(tn.alertVisibleDetails, k) || tn.showAllDetails {
 			buffer.WriteString(fmt.Sprintf("<i>%s</i>: <code>%s</code>\n", escapeHtml(k), escapeHtml(v)))
 		}
 	}

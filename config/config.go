@@ -25,7 +25,7 @@ type Config struct {
 
 	AlertProvider        string   `env:"ALERT_PROVIDER"         env-required:"true"`
 	AlertCooldownMinutes int      `env:"ALERT_COOLDOWN_MINUTES" env-default:"5"`
-	AlertVisibleDetails  []string `env:"ALERT_VISIBLE_DETAILS"  env-default:"trace_id,user_id"`
+	AlertVisibleDetails  []string `env:"ALERT_VISIBLE_DETAILS"  env-default:"*"`
 
 	TelegramBotToken string  `env:"TELEGRAM_BOT_TOKEN"`
 	TelegramsChatIDs []int64 `env:"TELEGRAM_CHAT_IDS"`

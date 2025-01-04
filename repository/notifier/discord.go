@@ -15,6 +15,7 @@ type discordNotifier struct {
 	notifier            notify.Notifier
 	environment         string
 	alertVisibleDetails []string
+	showAllDetails      bool
 }
 
 func NewDiscordNotifier(token string, channelIDs []string, environment string, alertVisibleDetails []string) (*discordNotifier, error) {
@@ -32,6 +33,7 @@ func NewDiscordNotifier(token string, channelIDs []string, environment string, a
 		notifier:            n,
 		environment:         environment,
 		alertVisibleDetails: alertVisibleDetails,
+		showAllDetails:      len(alertVisibleDetails) == 1 && alertVisibleDetails[0] == "*",
 	}, nil
 }
 
@@ -70,7 +72,7 @@ func (dn *discordNotifier) buildMsgBody(e entity.ErrorInfo) string {
 
 	// Details section with only visible details
 	for k, v := range e.Details {
-		if slices.Contains(dn.alertVisibleDetails, k) {
+		if slices.Contains(dn.alertVisibleDetails, k) || dn.showAllDetails {
 			buffer.WriteString(fmt.Sprintf("_%s_: `%s`\n", escapeMarkdown(k), escapeMarkdown(v)))
 		}
 	}
