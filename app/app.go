@@ -130,10 +130,10 @@ func defineNotifier(cfg config.Config) (notifier.Notifier, error) {
 	switch cfg.AlertProvider {
 
 	case config.AlertProviderTelegram:
-		return notifier.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramsChatIDs, cfg.Environment, cfg.AlertVisibleDetails)
+		return notifier.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramsChatIDs, cfg.Environment, cfg.AlertVisibleDetails, cfg.AlertShowAllDetails)
 
 	case config.AlertProviderDiscord:
-		return notifier.NewDiscordNotifier(cfg.DiscordBotToken, cfg.DiscordChannelIDs, cfg.Environment, cfg.AlertVisibleDetails)
+		return notifier.NewDiscordNotifier(cfg.DiscordBotToken, cfg.DiscordChannelIDs, cfg.Environment, cfg.AlertVisibleDetails, cfg.AlertShowAllDetails)
 
 	default:
 		return nil, fmt.Errorf("defineNotifier: invalid alert provider: %s", cfg.AlertProvider)
