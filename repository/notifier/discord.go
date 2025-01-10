@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/code19m/sentinel/entity"
 	"github.com/nikoksr/notify"
@@ -12,13 +11,11 @@ import (
 )
 
 type discordNotifier struct {
-	notifier            notify.Notifier
-	environment         string
-	alertVisibleDetails []string
-	showAllDetails      bool
+	notifier    notify.Notifier
+	environment string
 }
 
-func NewDiscordNotifier(token string, channelIDs []string, environment string, alertVisibleDetails []string, showAllDetails bool) (*discordNotifier, error) {
+func NewDiscordNotifier(token string, channelIDs []string, environment string) (*discordNotifier, error) {
 	d := discord.New()
 	err := d.AuthenticateWithBotToken(token)
 	if err != nil {
@@ -30,10 +27,8 @@ func NewDiscordNotifier(token string, channelIDs []string, environment string, a
 	n.UseServices(d)
 
 	return &discordNotifier{
-		notifier:            n,
-		environment:         environment,
-		alertVisibleDetails: alertVisibleDetails,
-		showAllDetails:      showAllDetails,
+		notifier:    n,
+		environment: environment,
 	}, nil
 }
 
@@ -72,9 +67,7 @@ func (dn *discordNotifier) buildMsgBody(e entity.ErrorInfo) string {
 
 	// Details section with only visible details
 	for k, v := range e.Details {
-		if dn.showAllDetails || slices.Contains(dn.alertVisibleDetails, k) {
-			buffer.WriteString(fmt.Sprintf("_%s_: `%s`\n", escapeMarkdown(k), escapeMarkdown(v)))
-		}
+		buffer.WriteString(fmt.Sprintf("_%s_: `%s`\n", escapeMarkdown(k), escapeMarkdown(v)))
 	}
 
 	return buffer.String()

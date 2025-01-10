@@ -23,10 +23,8 @@ type Config struct {
 	PostgresPassword string `env:"POSTGRES_PASSWORD" env-required:"true"`
 	PostgresDatabase string `env:"POSTGRES_DATABASE" env-default:"sentinel"`
 
-	AlertProvider        string   `env:"ALERT_PROVIDER"         env-required:"true"`
-	AlertCooldownMinutes int      `env:"ALERT_COOLDOWN_MINUTES" env-default:"5"`
-	AlertVisibleDetails  []string `env:"ALERT_VISIBLE_DETAILS"  env-default:""`
-	AlertShowAllDetails  bool     `env:"ALERT_SHOW_ALL_DETAILS"  env-default:"true"`
+	AlertProvider        string `env:"ALERT_PROVIDER"         env-required:"true"`
+	AlertCooldownMinutes int    `env:"ALERT_COOLDOWN_MINUTES" env-default:"5"`
 
 	TelegramBotToken string  `env:"TELEGRAM_BOT_TOKEN"`
 	TelegramsChatIDs []int64 `env:"TELEGRAM_CHAT_IDS"`

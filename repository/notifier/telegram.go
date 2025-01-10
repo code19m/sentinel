@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/code19m/sentinel/entity"
 	"github.com/nikoksr/notify"
@@ -12,13 +11,11 @@ import (
 )
 
 type telegramNotifier struct {
-	notifier            notify.Notifier
-	environment         string
-	alertVisibleDetails []string
-	showAllDetails      bool
+	notifier    notify.Notifier
+	environment string
 }
 
-func NewTelegramNotifier(token string, chatIDs []int64, environment string, alertVisibleDetails []string, showAllDetails bool) (*telegramNotifier, error) {
+func NewTelegramNotifier(token string, chatIDs []int64, environment string) (*telegramNotifier, error) {
 	tg, err := telegram.New(token)
 	if err != nil {
 		return nil, fmt.Errorf("NewTelegramNotifier: %w", err)
@@ -29,10 +26,8 @@ func NewTelegramNotifier(token string, chatIDs []int64, environment string, aler
 	n.UseServices(tg)
 
 	return &telegramNotifier{
-		notifier:            n,
-		environment:         environment,
-		alertVisibleDetails: alertVisibleDetails,
-		showAllDetails:      showAllDetails,
+		notifier:    n,
+		environment: environment,
 	}, nil
 }
 
@@ -71,9 +66,7 @@ func (tn *telegramNotifier) buildMsgBody(e entity.ErrorInfo) string {
 
 	// Details section with only visible details
 	for k, v := range e.Details {
-		if tn.showAllDetails || slices.Contains(tn.alertVisibleDetails, k) {
-			buffer.WriteString(fmt.Sprintf("<i>%s</i>: <code>%s</code>\n", escapeHtml(k), escapeHtml(v)))
-		}
+		buffer.WriteString(fmt.Sprintf("<i>%s</i>: <code>%s</code>\n", escapeHtml(k), escapeHtml(v)))
 	}
 
 	return buffer.String()
