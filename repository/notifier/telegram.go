@@ -66,7 +66,12 @@ func (tn *telegramNotifier) buildMsgBody(e entity.ErrorInfo) string {
 
 	// Details section with only visible details
 	for k, v := range e.Details {
-		buffer.WriteString(fmt.Sprintf("<i>%s</i>: <code>%s</code>\n", escapeHtml(k), v))
+		if v != "" {
+			if len(v) > 1000 {
+				v = v[:1000] + "..."
+			}
+			buffer.WriteString(fmt.Sprintf("<i>%s</i>: <code>%s</code>\n", escapeHtml(k), v))
+		}
 	}
 
 	return buffer.String()

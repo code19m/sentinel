@@ -67,7 +67,12 @@ func (dn *discordNotifier) buildMsgBody(e entity.ErrorInfo) string {
 
 	// Details section with only visible details
 	for k, v := range e.Details {
-		buffer.WriteString(fmt.Sprintf("_%s_: ```%s```", escapeMarkdown(k), v))
+		if v != "" {
+			if len(v) > 1000 {
+				v = v[:1000] + "..."
+			}
+			buffer.WriteString(fmt.Sprintf("_%s_: ```%s```", escapeMarkdown(k), v))
+		}
 	}
 
 	return buffer.String()
