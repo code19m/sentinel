@@ -53,14 +53,14 @@ func (uc usecase) handleAlert(ctx context.Context, e entity.ErrorInfo) {
 		return
 	}
 
-	err = uc.notifier.Notify(ctx, e)
+	e.Alerted = true
+	err = uc.store.Update(ctx, e)
 	if err != nil {
 		uc.log.ErrorContext(ctx, fmt.Sprintf("usecase.handleAlert: %v", err))
 		return
 	}
 
-	e.Alerted = true
-	err = uc.store.Update(ctx, e)
+	err = uc.notifier.Notify(ctx, e)
 	if err != nil {
 		uc.log.ErrorContext(ctx, fmt.Sprintf("usecase.handleAlert: %v", err))
 		return
