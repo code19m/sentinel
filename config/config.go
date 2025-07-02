@@ -24,6 +24,7 @@ type Config struct {
 	PostgresDatabase string `env:"POSTGRES_DATABASE" env-default:"sentinel"`
 
 	AlertProvider        string `env:"ALERT_PROVIDER"         env-required:"true"`
+	AlertDisable         bool   `env:"ALERT_DISABLE"          env-default:"false"`
 	AlertCooldownMinutes int    `env:"ALERT_COOLDOWN_MINUTES" env-default:"5"`
 
 	TelegramBotToken string  `env:"TELEGRAM_BOT_TOKEN"`

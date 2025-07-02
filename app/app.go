@@ -127,6 +127,10 @@ func (a *app) Start() {
 }
 
 func defineNotifier(cfg config.Config) (notifier.Notifier, error) {
+	if cfg.AlertDisable {
+		return notifier.NewNoopNotifier(), nil
+	}
+
 	switch cfg.AlertProvider {
 
 	case config.AlertProviderTelegram:
