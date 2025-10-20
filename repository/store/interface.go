@@ -8,9 +8,10 @@ import (
 )
 
 var ErrNotFound = errors.New("object not found")
+var ErrAlertCooldown = errors.New("alert is in cooldown period")
 
 type Store interface {
 	Add(ctx context.Context, e entity.ErrorInfo) error
 	Update(ctx context.Context, e entity.ErrorInfo) error
-	FindLast(ctx context.Context, service, operation string, alerted bool) (entity.ErrorInfo, error)
+	CheckAndMarkAlerted(ctx context.Context, e entity.ErrorInfo, cooldownMinutes int) error
 }
