@@ -11,6 +11,9 @@ type ErrorInfo struct {
 	Service   string
 	Operation string
 
+	Frequency        int
+	FrequencyMinutes int
+
 	CreatedAt time.Time
 	Alerted   bool
 }

@@ -74,5 +74,9 @@ func (tn *telegramNotifier) buildMsgBody(e entity.ErrorInfo) string {
 		}
 	}
 
+	if e.Frequency > 0 {
+		buffer.WriteString(fmt.Sprintf("\n<b>📊 Frequency:</b> %d in last %d minutes", e.Frequency, e.FrequencyMinutes))
+	}
+
 	return buffer.String()
 }

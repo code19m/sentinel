@@ -45,6 +45,14 @@ func (uc usecase) SendError(ctx context.Context, e entity.ErrorInfo) error {
 			return
 		}
 
+		frequency, err := uc.store.GetErrorFrequency(alertCtx, e.Service, e.Operation, uc.alertCooldownMinutes)
+		if err != nil {
+			uc.log.ErrorContext(alertCtx, fmt.Sprintf("usecase.SendError: GetErrorFrequency failed: %v", err))
+		} else {
+			e.Frequency = frequency
+			e.FrequencyMinutes = uc.alertCooldownMinutes
+		}
+
 		err = uc.notifier.Notify(alertCtx, e)
 		if err != nil {
 			uc.log.ErrorContext(alertCtx, fmt.Sprintf("usecase.SendError: notification failed: %v", err))
