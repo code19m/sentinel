@@ -110,6 +110,23 @@ func (r *pgStore) CheckAndMarkAlerted(ctx context.Context, e entity.ErrorInfo, c
 	return nil
 }
 
+func (r *pgStore) GetErrorFrequency(ctx context.Context, service, operation string, minutesBack int) (int, error) {
+	var count int
+
+	row := r.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM errors
+		WHERE service = $1 AND operation = $2 AND created_at > NOW() - INTERVAL '1 minute' * $3;
+	`, service, operation, minutesBack)
+
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("pgStore.GetErrorFrequency: %w", err)
+	}
+
+	return count, nil
+}
+
 // hashServiceOperation creates a consistent hash for service+operation
 // to use as advisory lock key
 func hashServiceOperation(service, operation string) int64 {
