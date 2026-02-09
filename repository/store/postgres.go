@@ -11,12 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewPgStore(pool *pgxpool.Pool) (*pgStore, error) {
+func NewPgStore(pool *pgxpool.Pool, schema string) (*pgStore, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	store := &pgStore{pool: pool}
-	err := store.initDB(ctx)
+	store := &pgStore{
+		pool:  pool,
+		table: fmt.Sprintf("%q.errors", schema),
+	}
+	err := store.initDB(ctx, schema)
 	if err != nil {
 		return nil, fmt.Errorf("NewPgStore: %w", err)
 	}
@@ -25,14 +28,15 @@ func NewPgStore(pool *pgxpool.Pool) (*pgStore, error) {
 }
 
 type pgStore struct {
-	pool *pgxpool.Pool
+	pool  *pgxpool.Pool
+	table string
 }
 
 func (r *pgStore) Add(ctx context.Context, e entity.ErrorInfo) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO errors (id, code, message, details, service, operation, created_at, alerted)
+	_, err := r.pool.Exec(ctx, fmt.Sprintf(`
+		INSERT INTO %s (id, code, message, details, service, operation, created_at, alerted)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
-	`, e.ID, e.Code, e.Message, e.Details, e.Service, e.Operation, e.CreatedAt, e.Alerted)
+	`, r.table), e.ID, e.Code, e.Message, e.Details, e.Service, e.Operation, e.CreatedAt, e.Alerted)
 	if err != nil {
 		return fmt.Errorf("pgStore.Add: %w", err)
 	}
@@ -40,11 +44,11 @@ func (r *pgStore) Add(ctx context.Context, e entity.ErrorInfo) error {
 }
 
 func (r *pgStore) Update(ctx context.Context, e entity.ErrorInfo) error {
-	_, err := r.pool.Exec(ctx, `
-		UPDATE errors 
+	_, err := r.pool.Exec(ctx, fmt.Sprintf(`
+		UPDATE %s
 		SET alerted = $2
 		WHERE id = $1;
-	`, e.ID, e.Alerted)
+	`, r.table), e.ID, e.Alerted)
 	if err != nil {
 		return fmt.Errorf("pgStore.Update: %w", err)
 	}
@@ -71,13 +75,13 @@ func (r *pgStore) CheckAndMarkAlerted(ctx context.Context, e entity.ErrorInfo, c
 	var lastAlertedAt time.Time
 	var lastAlertedID string
 
-	row := tx.QueryRow(ctx, `
+	row := tx.QueryRow(ctx, fmt.Sprintf(`
 		SELECT id, created_at
-		FROM errors
+		FROM %s
 		WHERE service = $1 AND operation = $2 AND alerted = true
 		ORDER BY created_at DESC
 		LIMIT 1;
-	`, e.Service, e.Operation)
+	`, r.table), e.Service, e.Operation)
 
 	err = row.Scan(&lastAlertedID, &lastAlertedAt)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -93,11 +97,11 @@ func (r *pgStore) CheckAndMarkAlerted(ctx context.Context, e entity.ErrorInfo, c
 	}
 
 	// Cooldown passed, mark as alerted
-	_, err = tx.Exec(ctx, `
-		UPDATE errors 
+	_, err = tx.Exec(ctx, fmt.Sprintf(`
+		UPDATE %s
 		SET alerted = true
 		WHERE id = $1;
-	`, e.ID)
+	`, r.table), e.ID)
 	if err != nil {
 		return fmt.Errorf("pgStore.CheckAndMarkAlerted: %w", err)
 	}
@@ -113,11 +117,11 @@ func (r *pgStore) CheckAndMarkAlerted(ctx context.Context, e entity.ErrorInfo, c
 func (r *pgStore) GetErrorFrequency(ctx context.Context, service, operation string, minutesBack int) (int, error) {
 	var count int
 
-	row := r.pool.QueryRow(ctx, `
+	row := r.pool.QueryRow(ctx, fmt.Sprintf(`
 		SELECT COUNT(*)
-		FROM errors
+		FROM %s
 		WHERE service = $1 AND operation = $2 AND created_at > NOW() - INTERVAL '1 minute' * $3;
-	`, service, operation, minutesBack)
+	`, r.table), service, operation, minutesBack)
 
 	err := row.Scan(&count)
 	if err != nil {
@@ -143,10 +147,12 @@ func hashServiceOperation(service, operation string) int64 {
 	return hash
 }
 
-func (r *pgStore) initDB(ctx context.Context) error {
-	// Create tables and indexes if not exists
-	_, err := r.pool.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS errors (
+func (r *pgStore) initDB(ctx context.Context, schema string) error {
+	// Create schema and tables if not exists
+	_, err := r.pool.Exec(ctx, fmt.Sprintf(`
+		CREATE SCHEMA IF NOT EXISTS %q;
+
+		CREATE TABLE IF NOT EXISTS %s (
 			id UUID PRIMARY KEY,
 			code TEXT NOT NULL,
 			message TEXT NOT NULL,
@@ -158,11 +164,11 @@ func (r *pgStore) initDB(ctx context.Context) error {
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_errors_service_operation_alerted
-		ON errors (service, operation, alerted);
+		ON %s (service, operation, alerted);
 
 		CREATE INDEX IF NOT EXISTS idx_errors_created_at
-		ON errors (created_at);
-	`)
+		ON %s (created_at);
+	`, schema, r.table, r.table, r.table))
 	if err != nil {
 		return fmt.Errorf("pgStore.initDB: %w", err)
 	}

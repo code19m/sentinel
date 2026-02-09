@@ -53,7 +53,7 @@ func New(
 		os.Exit(1)
 	}
 
-	pgStore, err := store.NewPgStore(pgConn)
+	pgStore, err := store.NewPgStore(pgConn, cfg.PostgresSchema)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to create pgStore", slog.Any("error", err))
 		os.Exit(1)

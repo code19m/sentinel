@@ -22,6 +22,7 @@ type Config struct {
 	PostgresUser     string `env:"POSTGRES_USER"     env-default:"postgres"`
 	PostgresPassword string `env:"POSTGRES_PASSWORD" env-required:"true"`
 	PostgresDatabase string `env:"POSTGRES_DATABASE" env-default:"sentinel"`
+	PostgresSchema   string `env:"POSTGRES_SCHEMA"   env-default:"public"`
 
 	AlertProvider        string `env:"ALERT_PROVIDER"         env-required:"true"`
 	AlertDisable         bool   `env:"ALERT_DISABLE"          env-default:"false"`
