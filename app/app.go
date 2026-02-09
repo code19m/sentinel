@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
-	"os/signal"
 	"runtime"
-	"syscall"
 
 	"github.com/code19m/sentinel/config"
 	"github.com/code19m/sentinel/pb"
@@ -25,55 +22,51 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type app struct {
+// Server is the main sentinel application server.
+// It can be used standalone or embedded into another application.
+type Server struct {
 	logger *slog.Logger
 	cfg    config.Config
 
 	pgConn *pgxpool.Pool
-	server *grpc.Server
+	grpc   *grpc.Server
 }
 
-func New(
+// NewServer creates a new Server instance. It connects to the database,
+// initializes the notifier, and sets up the gRPC server.
+func NewServer(
 	logger *slog.Logger,
 	cfg config.Config,
-) *app {
+) (*Server, error) {
 	ctx := context.Background()
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		logger.ErrorContext(ctx, "Failed to start service", slog.Any("error", err))
-		os.Exit(1)
-	}
 
 	pgConn, err := pgxpool.New(ctx, fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDatabase))
-
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to connect to database", slog.Any("error", err))
-		os.Exit(1)
+		return nil, fmt.Errorf("sentinel: connect to database: %w", err)
 	}
 
 	pgStore, err := store.NewPgStore(pgConn, cfg.PostgresSchema)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to create pgStore", slog.Any("error", err))
-		os.Exit(1)
+		pgConn.Close()
+		return nil, fmt.Errorf("sentinel: create store: %w", err)
 	}
 
 	notifier, err := defineNotifier(cfg)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to create notifier", slog.Any("error", err))
-		os.Exit(1)
+		pgConn.Close()
+		return nil, fmt.Errorf("sentinel: create notifier: %w", err)
 	}
 
-	usecase := usecase.New(logger, pgStore, notifier, cfg.AlertCooldownMinutes)
+	uc := usecase.New(logger, pgStore, notifier, cfg.AlertCooldownMinutes)
 
-	sentinelServer := server.NewSentinelServer(cfg, logger, usecase)
+	sentinelServer := server.NewSentinelServer(cfg, logger, uc)
 
 	grpcPanicRecoveryHandler := func(p any) (err error) {
 		buf := new(bytes.Buffer)
-		stack := make([]byte, 2048)             // Allocate a byte slice for the stack trace
-		stackSize := runtime.Stack(stack, true) // Capture the stack trace
-		buf.Write(stack[:stackSize])            // Write the stack trace to the buffer
+		stack := make([]byte, 2048)
+		stackSize := runtime.Stack(stack, true)
+		buf.Write(stack[:stackSize])
 
 		err = status.Errorf(codes.Internal, "%s", p)
 
@@ -86,44 +79,38 @@ func New(
 			recovery.UnaryServerInterceptor(
 				recovery.WithRecoveryHandler(grpcPanicRecoveryHandler))))
 
-	// Register service
 	pb.RegisterSentinelServiceServer(grpcServer, sentinelServer)
 	reflection.Register(grpcServer)
 
-	return &app{
+	return &Server{
 		logger: logger,
 		cfg:    cfg,
 		pgConn: pgConn,
-		server: grpcServer,
-	}
+		grpc:   grpcServer,
+	}, nil
 }
 
-func (a *app) Start() {
-	ctx := context.Background()
-
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", a.cfg.GrpcHost, a.cfg.GrpcPort))
+// Start begins serving gRPC requests. It blocks until the server is stopped.
+func (s *Server) Start() error {
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", s.cfg.GrpcHost, s.cfg.GrpcPort))
 	if err != nil {
-		a.logger.ErrorContext(ctx, "Failed to listen", slog.Any("error", err))
-		os.Exit(1)
+		return fmt.Errorf("sentinel: listen: %w", err)
 	}
 
-	a.logger.InfoContext(ctx, "Server started", slog.String("address", listener.Addr().String()))
+	s.logger.Info("Server started", slog.String("address", listener.Addr().String()))
 
-	err = a.server.Serve(listener)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "Failed to serve", slog.Any("error", err))
-		os.Exit(1)
+	if err := s.grpc.Serve(listener); err != nil {
+		return fmt.Errorf("sentinel: serve: %w", err)
 	}
 
-	// Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	return nil
+}
 
-	<-quit
-	a.server.GracefulStop()
-	a.pgConn.Close()
-
-	a.logger.InfoContext(ctx, "Server stopped")
+// Stop gracefully stops the server and closes the database connection.
+func (s *Server) Stop() {
+	s.grpc.GracefulStop()
+	s.pgConn.Close()
+	s.logger.Info("Server stopped")
 }
 
 func defineNotifier(cfg config.Config) (notifier.Notifier, error) {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/code19m/sentinel/app"
 	"github.com/code19m/sentinel/config"
@@ -16,10 +18,27 @@ func main() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to start service", slog.Any("error", err))
+		logger.ErrorContext(ctx, "Failed to load config", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	app := app.New(logger, cfg)
-	app.Start()
+	srv, err := app.NewServer(logger, cfg)
+	if err != nil {
+		logger.ErrorContext(ctx, "Failed to create server", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		<-quit
+		srv.Stop()
+	}()
+
+	if err := srv.Start(); err != nil {
+		logger.ErrorContext(ctx, "Server error", slog.Any("error", err))
+		os.Exit(1)
+	}
 }
